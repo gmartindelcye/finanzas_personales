@@ -1,0 +1,114 @@
+# coding: utf-8
+from sqlalchemy import Boolean, Column, DECIMAL, Date, Enum, ForeignKey, Integer, Numeric, String, Table, Text, text
+from sqlalchemy.sql.sqltypes import NullType
+from sqlalchemy.orm import relationship
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
+metadata = Base.metadata
+
+
+class Accounttype(Base):
+    __tablename__ = 'accounttypes'
+
+    id = Column(Integer, primary_key=True)
+    description = Column(Text, nullable=False)
+
+
+class Institution(Base):
+    __tablename__ = 'institutions'
+
+    id = Column(Integer, primary_key=True)
+    code = Column(String(5), nullable=False, unique=True)
+    name = Column(String(30), nullable=False)
+    notes = Column(Text)
+
+
+t_sqlite_sequence = Table(
+    'sqlite_sequence', metadata,
+    Column('name', NullType),
+    Column('seq', NullType)
+)
+
+
+class Transfertype(Base):
+    __tablename__ = 'transfertype'
+
+    id = Column(Integer, primary_key=True)
+    description = Column(String(30))
+
+
+class User(Base):
+    __tablename__ = 'user'
+
+    id = Column(Integer, primary_key=True)
+    code = Column(String(5), nullable=False, unique=True)
+    name = Column(String(100), nullable=False)
+    password = Column(String(100), nullable=False)
+    email = Column(String(50), nullable=False)
+    notes = Column(Text(0))
+
+
+class Account(Base):
+    __tablename__ = 'accounts'
+
+    id = Column(Integer, primary_key=True)
+    code = Column(String(5), nullable=False, unique=True)
+    id_institution = Column(ForeignKey('institutions.id'))
+    id_accounttype = Column(ForeignKey('accounttypes.id'))
+    balance = Column(DECIMAL(14), server_default=text("0"))
+    cutting_day = Column(Integer)
+    pay_day = Column(Integer)
+    credit_limit = Column(DECIMAL(14))
+    id_user = Column(ForeignKey('user.id'))
+
+    accounttype = relationship('Accounttype')
+    institution = relationship('Institution')
+    user = relationship('User')
+
+
+class Concept(Base):
+    __tablename__ = 'concepts'
+
+    id = Column(Integer, primary_key=True)
+    code = Column(String(10), nullable=False, unique=True)
+    description = Column(String(30), nullable=False)
+    nature = Column(Enum('Income', 'Expense'))
+    id_user = Column(ForeignKey('user.id'))
+
+    user = relationship('User')
+
+
+class Movement(Base):
+    __tablename__ = 'movements'
+
+    id = Column(Integer, primary_key=True)
+    id_user = Column(ForeignKey('user.id'), nullable=False)
+    date = Column(Date, nullable=False)
+    id_concept = Column(ForeignKey('concepts.id'))
+    id_account = Column(ForeignKey('accounts.id'), nullable=False)
+    amount = Column(DECIMAL(14), nullable=False)
+    notes = Column(Text(0))
+    documents = Column(Text(0))
+    processed = Column(Boolean, server_default=text("false"))
+
+    account = relationship('Account')
+    concept = relationship('Concept')
+    user = relationship('User')
+
+
+class Transfer(Base):
+    __tablename__ = 'transfers'
+
+    id = Column(Integer, primary_key=True)
+    id_user = Column(ForeignKey('user.id'))
+    id_transfertype = Column(ForeignKey('transfertype.id'), nullable=False)
+    id_origin_account = Column(ForeignKey('accounts.id'), nullable=False)
+    id_destination_account = Column(ForeignKey('accounts.id'), nullable=False)
+    amount = Column(Numeric(14, 2), nullable=False)
+    processed = Column(Boolean, server_default=text("false"))
+
+    destination = relationship('Account', primaryjoin='Transfer.id_destination_account == Account.id')
+    origin = relationship('Account', primaryjoin='Transfer.id_origin_account == Account.id')
+    transfertype = relationship('Transfertype')
+    user = relationship('User')
